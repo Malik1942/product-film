@@ -6,14 +6,15 @@ Point your coding agent at raw screen recordings of your product — an iOS app,
 
 Built on AVFoundation only. No ffmpeg, no video editor, no cloud rendering — every stage is a plain Swift script.
 
-| Mobile path — from the Oryne launch film | Brand-font title card — same film |
+| Mobile path — from the Oryne launch film | Brand-font title card |
 |---|---|
 | ![mobile](docs/example-mobile.png) | ![card](docs/example-card.png) |
 
-![desktop](docs/example-desktop.png)
-*Desktop path — frame from the [Inkwork](https://malikzhang.com/inkwork) film: a real website shot full-bleed Screen-Studio style, arrow cursor with click rings, zooms clamped so the page fills every frame. The same grammar covers desktop apps and landscape Figma prototypes.*
+| Desktop path — from the [Inkwork](https://malikzhang.com/inkwork) film |
+|---|
+| ![desktop](docs/example-desktop.png) |
 
-Every frame above is unretouched output of this pipeline, taken from two shipped films.
+Every frame above is unretouched output of this pipeline, taken from two shipped films. The desktop shot is full-bleed Screen-Studio style — the page fills the canvas at every zoom level, so no black margin or card edge can enter frame; the same grammar covers desktop apps and landscape Figma prototypes.
 
 ## Why it exists
 
