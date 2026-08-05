@@ -95,6 +95,14 @@ FRAME_PNG=/path/to/bezel.png SCREEN_RECT=x,y,w,h swift scripts/composite2.swift 
 
 Capture (simulator staging, take protocol, auto-zoom derivation) lives in a separate `screen-recording` skill in the author's setup. This repo stands alone for editing/compositing/scoring — record takes with whatever you have (`xcrun simctl io recordVideo`, `screencapture -v`), then measure with `diffscan` and cut from measured times.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) — mechanics changes are normal PRs; taste-law changes go through the ratification gate described there.
+
 ## License
 
 MIT — see [LICENSE](LICENSE). Brand fonts are never bundled; supply yours per project via `FONT_FILE`.
+
+---
+
+Built by [Malik Zhang](https://malikzhang.com).
