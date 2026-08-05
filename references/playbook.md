@@ -1,0 +1,132 @@
+# Product-Film Pipeline — Playbook
+
+Every script is plain Swift, run with `swift <file> <args>` (Command Line Tools only — set `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` for anything touching simctl). All scripts live in `scripts/` beside this file; the iPhone mockup ships in `assets/` (composite2 finds it on its own). Canvas is 2560×1440@60 throughout; if a project needs another size, change the `W`/`H` constants consistently in composite2 + the stitch template (the card templates take `W`/`H`/`FPS` via env).
+
+**Script contract — two classes, one invariant:**
+- **Reusable utilities** (scan, diffscan, diffscan2, condense, composite2, mux, title-card-template, end-card-template) take every REQUIRED runtime input as explicit argv; optional behavior and styling go through env. Run them as-is from the skill — no editing.
+- **Project templates** (stitch-template, score-template, score-playful-template) are copied into the project; their PRIMARY creative contract lives in-file (clip order and transition kinds, chord tables, BPM, layer entrances, automation nodes) and is edited there by design. Env vars (`CLIPS_DIR`, `OUT`) exist only for portable path resolution, defaulting to cwd — they are configuration, not the interface. (The card templates straddle: argv utilities as shipped, copied only for styling deeper than their env knobs.)
+- **Invariant for every script:** no machine-specific, project-specific, or `/tmp` paths baked in. The only path a script may assume is the skill's own `assets/`, resolved relative to the script itself. Outputs default to cwd — run from the project's durable working directory.
+
+**Speed trap:** `swift file.swift` recompiles every run (~3–5s). For any helper invoked repeatedly in a loop (frame extraction, cursor warps), compile once with `swiftc -O` — repeated interpreted runs blow past command timeouts.
+
+**The skill evolves — through a ratification gate.** These files are the accumulated verdicts of real deliveries, but not every user ruling belongs here. Sort each one into a tier before writing anything: (1) project-local style direction → the film's script (Vibe/Brand blocks) and project memory, never these files; (2) stable user preference → persist only when clearly recurring or explicitly stated; (3) globally reusable production law → encode HERE (new law, mistake row, refined rule) before the next film — a rejection that isn't written down will be repeated by the next session. Encode the generalized lesson, not the literal choice: a project's cross-dissolve override teaches "explicit styling beats transition defaults," not a new transition default. Project-specific state (file keys, take paths, seeded data) goes to memory; only transferable craft belongs here.
+
+## Stage order (never reorder)
+
+1. **Script/plot doc → approval.** No renders before the scene list is signed off. What the user must articulate (six blocks: vibe, frame, scene list with interaction+payoff+data, words, brand, sound) + the fill-in template live in `writing-the-script.md` — hand it to the user when their brief is vague. **If the brief doesn't state the film's vibe/style, ask before the first render** — offer two or three named directions with references; vibe sets tempo, cut rhythm, camera energy and the whole score, and guessing it means rebuilding both the score and the edit. Scenes = one idea each; feature depictions use real UI and real outputs only.
+2. **Capture** — any surface: iOS simulator, website, or Figma prototype. The screen-recording skill owns this stage (staging, take protocol, per-surface recorders).
+3. **Measure** — scan.swift + diffscan.swift (mobile) / diffscan2.swift (desktop). *Mandatory before any trim.*
+4. **Condense** — condense.swift splices beats.
+5. **Composite** — composite2.swift puts the recording in the device mockup (mobile) or cover-fills the canvas (desktop `FILL=1`) with camera + interaction cues.
+6. **Stitch** — stitch-template.swift assembles clips with transitions/cards/breaths; generate the cards first (title-card-template / end-card-template, Figma fallback).
+7. **Score** — score-template.swift (calm/premium) or score-playful-template.swift (playful/energetic) renders music+SFX to the stitched timeline.
+8. **Mux** — mux.swift (video passthrough + audio).
+9. **Verify** — extract frame strips at every changed moment; read them before delivering.
+10. **Gap audit** — grade every scene of the delivered file against the approved script and hand the written audit over with the film. Mandatory on every generation, including single-scene revisions. Format, verdict vocabulary and the ban on hedging live in `gap-audit.md`. Editing gaps get fixed before delivery; capture gaps get named with the shot that would close them.
+
+## Script contracts
+
+### scan.swift `<in.mp4> <out.png> [step-seconds]`
+Contact sheet with timestamps. Use to eyeball content and find page/screen beats.
+
+### diffscan.swift `<video> [step=0.4] [threshold=6]`
+Frame-difference detector; prints `transition a - b` windows. Use to locate taps/screen-changes precisely — MCP tap latency makes intended timing worthless. **Mobile only** — it samples a 60×130 portrait grid.
+
+### diffscan2.swift `<video> [step=0.1] [threshold=1.2]` — the desktop measurement tool
+Aspect-correct (192×N grid from the real source aspect) and far more sensitive, so small desktop changes (a style card selecting, a slider notch) register. Prints per change cluster: the window, the peak, and the **centroid + bounding box of the changed pixels** as fx/fy fractions from the top-left — i.e. *where the UI responded*. That centroid is the payoff to frame; the click target is the control you see at that moment in the frame (extract it and read the layout). Running diffscan.swift on 16:9 footage instead reports almost nothing.
+
+### condense.swift `<in> <out> "a,b[,rate];a,b[,rate];..."`
+Splices segments; per-segment rate. **rate < 0.5 = hold mode** (repeats a 2-frame chunk — the only way to freeze/slow: `scaleTimeRange` slow-down FAILS on export). Speed-ups (1.2–1.8×) work normally.
+
+### composite2.swift `<in> <out> <trimStart> <trimDur> "<plan>" [rate] [cropTop] [pressT] [tapT tapFx tapFy] [curT0 curT1 curFx0 curFy0]`
+- trimStart may be negative (= from end).
+- plan = `"t fx fy scale rot; ..."` camera keyframes: fx/fy are device-screen fractions (0,0 top-left) the camera centers on; scale 1.0 = whole device. Bezier 0.35/0/0.12/1 between keys.
+- `pressT`: Action-Button cue — glow pulse on the mockup's left-edge button + device nudge at that output-time.
+- `tapT tapFx tapFy`: white tap-ripple at a screen point. **Must complete before the UI transition starts** or it lands on the wrong screen.
+- `curT0 curT1 ...`: touch cursor — fades in at curT0 at (curFx0,curFy0), eased glide arriving at the tap point at curT1, press-dip, then ripple. Use for every click a viewer must understand.
+- Screen geometry via env (works for ANY footage — native app, website, Figma prototype):
+  - default: the skill's own `assets/iphone-mockup.png` (1120×2289, screen rect 60,58,999×2173) — resolved beside the script, so it works from any project.
+  - `FRAME_PNG=/path.png SCREEN_RECT=x,y,w,h` — any other device frame with a transparent cutout.
+  - `FRAMELESS=1` — no frame: footage in a rounded card (radius 24, glow shadow), auto-fit ≤88%W/86%H preserving the source aspect. **Mobile-aspect content only** (e.g. a phone-shaped Figma proto with no frame PNG). Never for desktop pages — that grammar produced the Inkwork failure. `CONTENT_H=px` overrides size.
+  - `FILL=1` — **the desktop mode.** Content cover-fills the canvas: scale 1.0 = edge-flush wide shot, plan scales are clamped ≥1.0, rotation forced 0, and every camera position is clamped so a content edge can never enter frame — plans may target corners freely and the composite snaps flush. No card, no shadow, no rounded corners.
+  - `CURSOR_STYLE=arrow|dot|none` (default: arrow when FILL=1, dot otherwise), `CURSOR_PX` size (64 arrow / 52 dot). Arrow = black macOS-style pointer with white outline, anchored at its tip; its click is a dark-disc + white-ring ripple that reads on any page color. Dot = the mobile touch cursor. **`none` = rings only, no synthetic pointer — required whenever the capture already shows a pointer** (`screencapture -v` records the real cursor, and some sites draw their own): two pointers side by side is an instant reject. Check a frame before choosing.
+  - `CUES="t fx fy [click]; ..."` — multi-interaction scenes. `t` is the measured UI-RESPONSE time; one persistent cursor glides between all targets (arriving t−0.25, dipping, ring at t−0.15) instead of one cue per pass. `click=0` = silent waypoint: cue a drag as handle-start (click=1) → handle-end (click=0). Overrides the single-cue positional args.
+  - `CROP=l,t,r,b` (source px) — trim capture junk (scrollbar, window edge, a strip of desktop) BEFORE the fill math, so the clean region fills the canvas. Without it the desktop path faithfully cover-fills the junk into a black bar down the frame edge. Measure it: sample edge columns/rows of a raw frame rather than guessing.
+  - Framed mode insets video 5px with corner-radius mask (edge-bleed fix); frameless uses the card mask itself.
+
+### stitch-template.swift (copy per project; edit clips + trans arrays in-file)
+Clip paths resolve against `CLIPS_DIR` env (default cwd); output via `OUT` env (default `film.mp4` in cwd). Two A/B video tracks; per-boundary `Trans(kind:dur:)`:
+- `"F"` fade-up-from-black (opening→first scene, 0.4–0.5s)
+- `"Z"` zoom-through (within acts, 0.55s): outgoing accelerates INTO the screen, blend hidden at peak velocity, incoming decelerates out. The premium default.
+- `"B"` breath (act boundaries): 0.5s fade-out → black rest (`dur`) → 0.5s fade-up. Cards are clips sandwiched between two `B 0.1` boundaries.
+- Boundary kinds already rejected by Malik, weakest to strongest of the taste ladder: hard cut / black gap ("laggy, cheap"), plain cross-dissolves ("hard/fragile", ghosting = two frames at once), side-slide pushes ("PPT"). Z and F are the only approved kinds; B is structure, not a transition.
+- **Instructions must tile the exact composition duration** — the template snaps the last instruction to comp.duration (sub-ms CMTime gap ⇒ "Operation Stopped").
+
+### score-template.swift / score-playful-template.swift (copy per project; edit constants at top)
+Fully synthesized (zero licensing); output via `OUT` env (default `score.m4a` in cwd). Constants: chord progression table, BPM, per-layer entrance times (`layerEnv from:`), automation `nodes` (film-time, dB) with smoothstep interpolation, plus SFX primitives: `addSubBloom` (card impacts), `addSwell` (low filtered rise into cards — not bright risers), `addTick` (click cue ~560Hz + 140Hz body), sub-pulse. Master: normalize −1.5dB sample peak AND constrain mono-sum (phone speakers). Two approved recipes:
+- **Calm/premium** ("sundown style", score-template): ~54BPM, G major (G/D/Em/C, 2 bars each), sub fundamental always, sparse long-decay felt-piano notes, layers entering act by act, deep ducks (−15 to −22 relative) under every title card.
+- **Playful/energetic** (score-playful-template): 96BPM, C major I-V-vi-IV (Cmaj9/G6/Am7/Fmaj7, 1 bar each), plucked arpeggios with light swing, moving bass, soft kick+shaker, bell motif entering AT the reveal, brighter ~1046Hz toy ticks per interaction. Same deep card ducks.
+- **AVFoundation gotcha:** the `AVAudioFile` writer must go out of scope (wrap writing in a func, as both templates do) before probing the .m4a — otherwise it reads back 0.00s / 0 tracks.
+
+### title-card-template.swift `<output.mov> <seconds> <TITLE> [subtitle]` · end-card-template.swift `<output.mov> <seconds> <line> <logo.png>`
+Programmatic cards — the preferred path (see "Title cards & brand pieces"). Brand via env: `FONT_FILE=/path.ttf` (or `FONT_NAME=` for an installed font), `ACCENTS=RRGGBB,RRGGBB` accent bars in the product palette, `W`/`H`/`FPS`; style knobs (`BG`, text colors, `ENTRANCE`, `RISE`, `LOGO_COLOR`) per the "Title cards & brand pieces" section, all validated with warnings. Default motion is the approved grammar: smoothstep entrance, rise −26px, deep kern. End card auto-keys the logo (detects opaque-white "alpha" PNGs and keys on inverted luminance — a logo that reports hasAlpha can still be ink on opaque paper).
+
+### mux.swift `<video.mp4> <audio.m4a> <out.mp4>`
+Passthrough mux — never re-encode the picture at this stage.
+
+## Two presentation paths — pick by FORM FACTOR, not surface
+
+Decide once, at script time, from the product's aspect — not from whether it's an app or a website:
+
+| | **Mobile path** (portrait content: phone apps, phone-shaped protos) | **Desktop path** (landscape content: websites, desktop apps, landscape protos) |
+|---|---|---|
+| Present | Device mockup on black when the content matches the frame's screen aspect (e.g. ~19.5:9 phone footage in the iPhone mockup); FRAMELESS card otherwise | `FILL=1` full-bleed — the page IS the frame; it fills the canvas at every zoom level, edge-flush when wide |
+| Camera | Punch 1.35–1.5 to interaction points; wide = 1.02 | Punch 1.5–1.8 (up to 2.2 for small controls — desktop text is small); wide = exactly 1.0; zoom always expands toward the cursor's interaction point; clamped pans mean the page still fills the canvas mid-move |
+| Between nearby interactions | Return toward wide, re-punch | **Follow-pan at constant zoom** (Screen Studio grammar) when targets are < ~0.35 apart; return wide only when the payoff needs whole-page context (mode change, layout shift) |
+| Cursor | White touch dot, soft ripple | 64px arrow (black, white outline) + dark-disc/white-ring click — the dot ripple is invisible on light desktop UI |
+| Interactions & animations | Whole animation in one unbroken segment (iron law 2) | Same — and hold the camera STILL while a zoomed UI animation plays; never pan through it |
+| Stitch | F/Z/B grammar, cards between acts | Identical grammar — Z zoom-throughs read even better full-bleed |
+| autoplan | `autoplan.py taps.json` | `autoplan.py taps.json --desktop` (emits FILL=1 invocation) — the script lives in the **screen-recording skill** (`~/.claude/skills/screen-recording/scripts/autoplan.py`) |
+
+**The two-beat camera rule (desktop) — the single biggest source of "the zoom focuses on the wrong thing":**
+- **Beat A — the control.** Frame the thing being clicked, tight enough to READ its label, arriving ≥0.3s before the click. Never be mid-move when the click lands.
+- **Beat B — what actually changed.** The camera must be LOOKING AT the payoff region WHEN it changes, not travel there afterward. Classify the payoff first:
+  - **Local payoff** (changes where the click is — a slider label, a button state): hold on the control through the response. This is the only case where "hold through the click" is right.
+  - **Remote payoff** (changes elsewhere — a preview panel, a proof readout): either (a) **two-subject frame** — a moderate zoom (≈1.3–1.5×; visible width = 1/scale of the page) whose crop contains BOTH the control and the payoff region as deliberate subjects, so the click ring and the redraw are seen in the same shot; or (b) **cut/pan to the payoff at the click** so the camera arrives before the response lands — the ripple ring marks the click; the camera's job is the change. NEVER linger on a control after its ripple when the change is remote and instant — that films the cursor and misses the product.
+- **Never frame the *accidental* average of A and B.** A punch centred between them that leaves both half-readable is what reads as unfocused. The two-subject frame above is different: it's chosen so both subjects ARE readable — check a frame; if either isn't legible, drop to case (b).
+- **Every state-change outcome gets ≥2s of readable hold at its final state.** If the take moves on too fast, extend the trim into the take's static tail, or hold-freeze with condense (rate<0.5). A change the viewer can't inspect afterward didn't happen ("I can't see what's real changed and what's the outcome").
+- **Whole-page changes (theme/mode switches): punch to the TRIGGER first, then pull out to wide as the change floods.** Sitting wide through the click means the viewer sees the page transform but never sees what caused it — the most common way a film's key moment gets lost.
+- **The payoff is whatever visibly changed — verify which, don't assume it's the hero object.** In Inkwork's fine-tune scene the QR is nominally the subject, but the corner-radius tweaks barely alter it while the labels flip "Corners · Dots" → "Corners · Rounded" and "0%" → "15%": the readable payoff is the LABEL, so the camera holds on the slider row. Same scene, the proof panel reads "Checking…" at the window's end — another reason not to end there. Pull a frame at the payoff moment and ask what a viewer could actually read.
+- Consecutive targets sharing an axis (e.g. a card at 0.359,0.527 and a button at 0.359,0.675) get a straight constant-zoom pan, not a zoom-out-and-back-in.
+
+**Desktop laws (each visible as a failure in Inkwork Film v1, the mobile-grammar-on-desktop reference):**
+- The page must fill the canvas in EVERY frame — wide, mid-zoom, and zoomed. Black margins sliding into frame while zoomed, or a card corner/shadow inside a punched shot, are automatic rejects. FILL=1 enforces this; don't hand-build desktop framing with the card mode.
+- Frame regions, not points: when punched in, compose so the control AND its readable payoff share the crop where possible; the clamp will keep the framing legal even for corner targets.
+- Capture at the canvas aspect (16:9 for 2560×1440). A tall/odd-aspect capture forces cover-cropping that eats UI — the capture protocol owns this.
+
+## Title cards & brand pieces
+**Cards are generated programmatically. Preferred: Swift (`title-card-template.swift` / `end-card-template.swift`). Fallback: Figma.** Both paths carry the same approved grammar: 2560×1440 black frames, text rise-26px + fade entrance, cards ~2.4s, and — law 13 — the FILMED product's brand font and palette (from the script's Brand block; e.g. Oryne = Bitcount Grid Single), never a previous project's.
+
+- **Swift path (default):** brand font via `FONT_FILE`/`FONT_NAME`, product accent bars via `ACCENTS` (sample real hex values from the product's footage or brand assets). Deterministic, instant to regenerate when copy changes, no Figma round-trip. Per-brand texture (grids, grain) is added in a project copy of the template, quieter than the words.
+- **Styling is parameterized — user direction plugs straight in:** `BG`, `TITLE_COLOR`/`SUB_COLOR` (title card), `LINE_COLOR`/`LOGO_COLOR` (end card), `ENTRANCE` (seconds; slower = calmer, faster = punchier), `RISE` (px travel; 0 = fade only). These cover routine style requests ("lighter cards", "slower entrance") without touching the file. Knobs are validated: near-miss names (`ENTRACE`) and invalid values warn on stderr instead of silently rendering defaults, and every render prints its effective style line — read it before trusting a render that "ignored" a styling request. Anything deeper — easing curves, layout, texture, per-word animation — is a project copy edit; that is the template contract, not a workaround. The baked defaults are approved grammar, but an explicit user styling direction overrides them. Scope per the SKILL.md cascade rule: VIBE-level direction restyles the cards along with every other surface; a request scoped to the cards stays on the cards — flag the consistency question (do the score's ducks and the transition feel still fit?), never rewrite other surfaces uninvited.
+- **Figma fallback** (when the card needs Figma-native assets or the brand lives there): pull fontName from an existing brand text node, animate rise+fade with expo-out `(0.16,1,0.3,1)`, export via export_video at 60fps. Cloned Figma text nodes keep their source's fixed box — set `textAutoResize = "HEIGHT"` before layout or stacks overlap.
+- End card = logo/wordmark + CTA line (+ real App Store badge cropped from an official asset when the placement is an app launch). The Swift template auto-keys the logo white; check a frame — a solid white box means the keying picked the wrong signal.
+
+## Iron laws (each one cost a rejected version)
+1. **Frame-scan before trimming.** Never trim from intended tap timing; recordings contain MCP latency (a 15s plan can be a 60s take, pages held 13s).
+2. **Splice boundaries never sit on an animation's first moving frame** — include the whole transition inside one segment or it reads as lag.
+3. **Extracted/recovered clips carry baked-in blends.** Anything cut out of a stitched film has dissolve contamination at its edges; prefer raw takes, trim contaminated tails.
+4. **Every reveal needs a click cue first** (cursor/press/ripple). A feature demo without the visible interaction "transfers no info".
+5. **A gather/collection reveal must show 3+ items.** One item disproves the concept on camera.
+6. **No idle camera motion.** The camera moves only to show something readable; tilts and drift read as "meaningless motion".
+7. **Static holds > 3s are dead air** unless the frame is the payoff being read.
+8. **Sim hygiene before takes:** `simctl privacy grant all` (it KILLS the running app — do it before launch), pre-pass mic/speech dialogs, English locale (`AppleLanguages en-US` + reboot), clean status bar 9:41, rating-prompt can ambush mid-take.
+9. **Store surgery is allowed on sim data:** rename synthetic/Chinese/refusal-text rows via sqlite3 on the App-Group store; themes blob is NSKeyedArchiver plist (plistlib round-trips it). **Seeded demo data must read as real** — placeholder titles ("Synthetic drift 24") kill the film; rewrite the rows before shooting.
+10. **Stock MP3 downloads are previews with ad watermarks** — never ship; synthesize or buy the license.
+11. **Work in a durable directory** (~/Desktop/...). /tmp scratchpads get wiped mid-project.
+11b. **Verify a source by its CONTENT, never its filename.** On the Inkwork re-edit the `NN-scene.mov` trim files on disk were a stale earlier take (wrong app mode entirely) that matched neither the master nor the `-comp` files built from it — because the trims had been revised inside the (later lost) compositor call. Extract a frame from every source before you cut it; if the pipeline's intermediates and finals disagree, re-derive from the raw master.
+12. **Verify by extracted frames after every render** — timeline arithmetic: clip starts = prev start + prev dur − overlap (F/Z) or + gap (B).
+13. **READ every card's words at full resolution and diff them against the script's Words block — including cards you inherited.** Card copy is the one thing frame-verification silently skips: on a contact sheet the type is too small to read, so a wrong line survives every check that looks at framing, exposure and edges. A real instance: an Inkwork film shipped an opening card reading "YOUR THOUGHTS DON'T LIVE IN A GRID." — copy belonging to a different product (Oryne) — while the approved script said "QR, WITH A POINT OF VIEW.". It was generated once by another agent and then reused across versions unchecked. Reused assets need this check MORE than fresh ones, not less. Same pass: card accents/fonts should be the filmed product's palette, not the previous project's.
+
+## Pacing grammar (Malik-approved end state)
+Acts announced by brand-font title cards on black; breaths (1s black) between acts; zoom-throughs within acts; onboarding pages ≥2s each, page 1 ~2s minimum; transcript/typing sections sped 1.35×; payoff scenes (Ask) longest; end card held, no fade-out. Music ducks to near-silence in every breath/card and builds act ceilings toward the payoff act.
