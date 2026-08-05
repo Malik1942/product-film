@@ -61,33 +61,62 @@ Swap `~/` for `<repo>/` to scope the skill to one repo and commit it with the pr
 
 ## How to prompt
 
-The skill triggers on any product/promo-video work. Natural prompts:
+**1 — Start with one sentence: the goal, and where the footage is (or will come from).**
 
 ```text
 Make a 60-second promo film for my app. Raw recordings are in ~/Desktop/MyAppTakes.
 ```
 
 ```text
-Film my website at example.com into a Screen-Studio-style demo — desktop grammar, arrow cursor.
-```
-
-```text
-The page turn in scene 2 feels laggy and the zoom focuses on the wrong thing. Fix both.
+Film my website at example.com into a Screen-Studio-style demo.
 ```
 
 If your agent supports explicit invocation you can also name it directly — `$product-film` in Codex, `/product-film` in Cursor and Claude Code.
 
-Style direction works at two levels, and the skill knows the difference:
+**2 — It answers with a film script to fill in, not a render.** That's by design: the approval gate is what prevents expensive wrong-direction renders. The script is six blocks (full fill-in template: [`references/writing-the-script.md`](references/writing-the-script.md)) — this is all the information the film is built from:
 
-- **Vibe-level** — cascades to everything (edit rhythm, camera energy, cards, score):
-  `"Make it calm and premium, like a sundown ambient track."` / `"Playful and energetic."`
-- **Scoped** — touches only what you named:
-  `"Make the logo gold on the end card."` / `"Slow the title card entrance."`
+| You provide | Example |
+|---|---|
+| Product & surface | iOS app on a simulator · website URL · Figma prototype link |
+| Placement & length | landing page · ~60s · 2560×1440 |
+| Vibe | "calm and premium, like a sundown ambient track — avoid busy percussion" |
+| Scenes, one idea each | the click to show · the payoff to read (exact text/number) · the data that must exist first |
+| Words | opening tagline · title-card texts · end-card line + CTA |
+| Brand | card font (`.ttf` or installed name) · accent colors · logo |
+| Sound | a reference track or mood — otherwise synthesized to the vibe |
 
-Two things to expect from the workflow:
+Skip the vibe and it will ask — offering two or three named directions to pick from — because vibe drives the cut rhythm, camera energy, card tone and the entire score.
 
-1. **It will ask for a script before rendering.** Films are built from a six-block script (vibe, frame, scene list with interaction + payoff + data, words, brand, sound). If your brief is vague, the agent hands you a fill-in template first — that's by design; the approval gate is what prevents expensive wrong-direction renders.
-2. **Every delivery includes a gap audit.** Each scene of the actual rendered file is graded against the script (MET / PARTIAL / CONTRADICTED / MISSING / DEVIATES) from extracted frames, with editing gaps fixed before delivery and capture gaps named plainly.
+A filled script is short. Compressed from a real film:
+
+```text
+FILM: Inkwork promo   SURFACE: website — malikzhang.com/inkwork   PLACEMENT: landing page
+CANVAS: 2560x1440     LENGTH: ~45s
+VIBE: playful and energetic — plucked, moving; biggest moment: the Arcade reveal
+SCENES:
+1. Create a QR — interaction: type URL, click Create · payoff: branded QR + "Scannable" · data: none · ~8s
+2. Styles — interaction: click style cards · payoff: QR restyles live in the Proof panel · ~8s
+TITLE CARDS: before 2 — "BREAK THE GRID"
+END CARD: logo + "DESIGNED AND BUILT BY MALIK"
+BRAND: default font, accents FFEE51,0EA5E9   SOUND: playful, bell motif at the reveal
+```
+
+**3 — Approve the script and the pipeline runs**: capture → measure → cut → composite → stitch → score → mux. Every delivery arrives with frame verification **and a scene-by-scene gap audit** — each scene of the actual rendered file graded against the script (MET / PARTIAL / CONTRADICTED / MISSING / DEVIATES) from extracted frames, editing gaps fixed before delivery, capture gaps named plainly.
+
+**4 — Style it, any time — before the first render or after the tenth.** Direction works at two levels, and the skill knows the difference:
+
+- **Vibe-level** cascades to every surface — edit rhythm, camera energy, cards, animation, score move together:
+  `"Make it warmer and more playful."` · `"Calmer, more premium."`
+- **Scoped** touches only what you named, and asks before spreading:
+  `"Make the logo gold on the end card."` · `"Slow the title card entrance."` · `"White accent bars on the cards."`
+
+The skill's built-in taste (zoom-through transitions, click cues, pacing) is a default, not a cage — explicitly ask for anything and it applies to your film. Only the engineering gates don't bend: measured trims, frame verification, the gap audit, and no watermarked audio.
+
+Fixing a delivered cut works the same conversational way:
+
+```text
+The page turn in scene 2 feels laggy and the zoom focuses on the wrong thing. Fix both.
+```
 
 ## What's inside
 
