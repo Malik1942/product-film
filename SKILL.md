@@ -1,7 +1,7 @@
 ---
 name: product-film
 version: 1.0.0
-description: Use when making or editing a product/promo video from screen recordings of any product — a phone app, a website, a desktop app, or a Figma prototype — capturing takes, trimming/splicing scenes, compositing with camera moves and click cues (device mockup for mobile, full-bleed Screen-Studio-style for desktop), stitching scenes with transitions and title cards, adding a soundtrack, or when a cut feels laggy, ghosty, unclear, "PPT-like", or shows black margins/floating-card framing on desktop content. Also for App Store end cards and verifying edits frame-by-frame. For a fast narrated internal release reel built from merged PRs ("what's new this week"), prefer a lighter release-reel workflow if one is available (e.g. a `whats-new-movie` skill) — this skill is the premium/public tier.
+description: Use when making or editing a product/promo video from screen recordings of any product — a phone app, a website, a desktop app, or a Figma prototype — capturing takes, trimming/splicing scenes, compositing with camera moves and click cues (device mockup for mobile, full-bleed Screen-Studio-style for desktop), stitching scenes with transitions and title cards, adding a soundtrack, or when a cut feels laggy, ghosty, unclear, "PPT-like", or shows black margins/floating-card framing on desktop content. Also for App Store end cards and verifying edits frame-by-frame. This is the premium tier — not the tool for a quick internal release reel.
 ---
 
 # product-film

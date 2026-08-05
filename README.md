@@ -111,7 +111,13 @@ FRAME_PNG=/path/to/bezel.png SCREEN_RECT=x,y,w,h swift scripts/composite2.swift 
 
 ## Companion skill
 
-Capture (simulator staging, take protocol, auto-zoom derivation) lives in a separate `screen-recording` skill, not published here. This repo stands alone for editing/compositing/scoring — record takes with whatever you have (`xcrun simctl io recordVideo`, `screencapture -v`), then measure with `diffscan` and cut from measured times.
+Capture (simulator staging, take protocol, auto-zoom derivation via `autoplan.py`) lives in the companion **[screen-recording](https://github.com/Malik1942/screen-recording)** skill — install both for the full recordings-to-scored-film pipeline:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Malik1942/screen-recording/main/install.sh | bash
+```
+
+This repo also stands alone for editing/compositing/scoring — record takes with whatever you have (`xcrun simctl io recordVideo`, `screencapture -v`), then measure with `diffscan` and cut from measured times.
 
 ## Contributing
 
