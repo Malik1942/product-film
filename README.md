@@ -1,10 +1,17 @@
 # product-film
 
-**An agent skill that turns screen recordings into scored, verified product films.** It's a plain `SKILL.md` skill plus Swift scripts with nothing agent-specific inside, so it runs on any agent that reads the format — Codex, Cursor and Claude Code today.
+**An agent skill that turns screen recordings into scored, verified product films.** One `SKILL.md` plus plain Swift scripts, nothing agent-specific inside — it runs on any agent that reads the format (Codex, Cursor and Claude Code today).
 
-Point your coding agent at raw screen recordings of your product — an iOS app, a website, a desktop app, or a Figma prototype — and this skill gives it the full production pipeline: measuring real interaction times, splicing beats, compositing into a device mockup (mobile) or Screen-Studio-style full-bleed (desktop) with camera moves and click cues, stitching acts with title cards, synthesizing a license-free soundtrack, and auditing the final cut scene-by-scene against the approved script.
+Point your agent at raw recordings of your product — an iOS app, a website, a desktop app, or a Figma prototype — and it gains the full production pipeline:
 
-Built on AVFoundation only. No ffmpeg, no video editor, no cloud rendering — every stage is a plain Swift script.
+- **Measure** — find the real interaction times in the footage, so every cut lands where something actually happens
+- **Cut** — splice the beats, never mid-animation
+- **Composite** — camera moves and click cues; device mockup for mobile, Screen-Studio-style full-bleed for desktop
+- **Stitch** — scenes into acts, with title cards and transitions between them
+- **Score** — a synthesized, license-free soundtrack matched to the film's stated vibe
+- **Audit** — the final cut graded scene-by-scene against the approved script
+
+All of it on AVFoundation alone: no ffmpeg, no video editor, no cloud rendering. Every stage is a plain Swift script you can also run by hand.
 
 | Mobile path — from the Oryne launch film | End card — in the product's brand font |
 |---|---|
@@ -14,11 +21,13 @@ Built on AVFoundation only. No ffmpeg, no video editor, no cloud rendering — e
 |---|
 | ![desktop](docs/example-desktop.png) |
 
-Every frame above is unretouched output of this pipeline, taken from two shipped films. The desktop shot is full-bleed Screen-Studio style — the page fills the canvas at every zoom level, so no black margin or card edge can enter frame; the same grammar covers desktop apps and landscape Figma prototypes.
+Every frame above is unretouched pipeline output from two shipped films. The desktop shot is full-bleed, Screen-Studio style: the page fills the canvas at every zoom level, so no black margin or card edge can slide into frame. Desktop apps and landscape Figma prototypes get the same treatment.
 
 ## Why it exists
 
-Agent-cut product films usually fail the same ways: trims made from *intended* timings instead of measured ones, cuts landing mid-animation, reveals with no visible click, zooms focused on the wrong thing, watermarked stock audio, and cards carrying last project's copy. Every rule in this skill is a codified rejection from real film deliveries — the playbook is the accumulated taste, and the pipeline's verification gates (frame-scan before trimming, full-res card reads, a mandatory gap audit delivered with every render) are what keep quality stable across sessions.
+Agent-cut product films tend to fail the same few ways: trims made from *intended* timings instead of measured ones, cuts landing mid-animation, reveals with no visible click, zooms focused on the wrong thing, watermarked stock audio, cards carrying the last project's copy.
+
+Every rule in this skill is a codified rejection from a real film delivery. The playbook is the accumulated taste; the verification gates — frame-scan before trimming, full-resolution card reads, a gap audit delivered with every render — are what keep quality stable from one session to the next.
 
 ## Requirements
 
@@ -57,7 +66,7 @@ git clone https://github.com/Malik1942/product-film.git ~/.agents/skills/product
 | `~/.cursor/skills/` | Cursor |
 | `~/.codex/skills/` | Cursor, older Codex builds |
 
-Swap `~/` for `<repo>/` to scope the skill to one repo and commit it with the project; the personal directories make it available everywhere. Any of these can be a symlink to a single checkout, which is what `install.sh` sets up — one copy to update, every agent current. No registration step anywhere: agents discover `SKILL.md` on their own.
+The `~/` paths make the skill available in every project; swap `~/` for `<repo>/` to scope it to one repo and commit it with the project. Any of these directories can be a symlink to a single checkout — that's what `install.sh` sets up, so one `git pull` updates every agent. There's no registration step anywhere: agents discover `SKILL.md` on their own.
 
 ## How to prompt
 
@@ -73,7 +82,7 @@ Film my website at example.com into a Screen-Studio-style demo.
 
 If your agent supports explicit invocation you can also name it directly — `$product-film` in Codex, `/product-film` in Cursor and Claude Code.
 
-**2 — It answers with a film script to fill in, not a render.** That's by design: the approval gate is what prevents expensive wrong-direction renders. The script is six blocks (full fill-in template: [`references/writing-the-script.md`](references/writing-the-script.md)) — this is all the information the film is built from:
+**2 — It answers with a film script to fill in, not a render.** That's the approval gate: no expensive renders until the direction is agreed. The script is six blocks — all the information the film is built from (fill-in template: [`references/writing-the-script.md`](references/writing-the-script.md)):
 
 | You provide | Example |
 |---|---|
@@ -129,7 +138,7 @@ The page turn in scene 2 feels laggy and the zoom focuses on the wrong thing. Fi
 | `scripts/` | The pipeline: scan, diffscan/diffscan2, condense, composite2, stitch, score ×2, mux, title/end cards |
 | `assets/iphone-mockup.png` | Neutral device frame (generated, MIT-licensed) |
 
-Scripts come in two classes: **utilities** run as-is with explicit argv (`swift scripts/mux.swift film.mp4 score.m4a out.mp4`), **templates** (stitch, score) are copied into your project and edited in-file — the clip order and chord tables *are* the interface. No script contains machine-specific or `/tmp` paths, and nothing in the pipeline depends on which agent is driving it — you can run every stage by hand.
+Scripts come in two classes. **Utilities** run as-is with explicit arguments: `swift scripts/mux.swift film.mp4 score.m4a out.mp4`. **Templates** (stitch, score) are copied into your project and edited in-file — the clip order and chord tables *are* the interface. No script contains machine-specific or `/tmp` paths, and nothing depends on which agent is driving: every stage runs by hand from a shell.
 
 ## Device frames
 
