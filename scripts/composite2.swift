@@ -81,6 +81,8 @@ if frameless {
     mw = effW; mh = effH
     screen = CGRect(x: 0, y: 0, width: mw, height: mh)
 } else {
+    // Framed mode stretches footage to the screen cutout — a mismatched aspect distorts it.
+    // (Playbook: mockup only when footage matches the frame's screen aspect; FRAMELESS otherwise.)
     let mock = NSImage(contentsOfFile: mockPath)!
     mockCG = mock.cgImage(forProposedRect: nil, context: nil, hints: nil)
     mw = CGFloat(mockCG!.width); mh = CGFloat(mockCG!.height)
@@ -89,6 +91,10 @@ if frameless {
         screen = CGRect(x: p[0], y: p[1], width: p[2], height: p[3])
     } else {
         screen = CGRect(x: 60, y: 58, width: 999, height: 2173)
+    }
+    let srcAspect = effW / effH, screenAspect = screen.width / screen.height
+    if abs(srcAspect - screenAspect) / screenAspect > 0.15 {
+        fputs(String(format: "warning: footage aspect %.3f vs mockup screen %.3f — content will DISTORT in the frame. Use matching-aspect footage, or FRAMELESS=1 (card) / FILL=1 (desktop).\n", srcAspect, screenAspect), stderr)
     }
 }
 var devH: CGFloat = CGFloat(Double(env["CONTENT_H"] ?? "") ?? (frameless ? 0 : 1200))

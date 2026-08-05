@@ -27,7 +27,7 @@ let width = Int(env["W"] ?? "2560")!, height = Int(env["H"] ?? "1440")!
 let fps: Int32 = Int32(env["FPS"] ?? "60")!
 let sx = CGFloat(width) / 2560.0
 
-var displayFontName = env["FONT_NAME"] ?? "Menlo-Bold"
+var displayFontName = env["FONT_NAME"] ?? ""   // empty = SF system font (premium neutral default)
 if let fontFile = env["FONT_FILE"] {
     if let provider = CGDataProvider(url: URL(fileURLWithPath: fontFile) as CFURL),
        let gf = CGFont(provider) {
@@ -88,7 +88,7 @@ let lineColor = styleColor("LINE_COLOR", NSColor(white: 0.90, alpha: 1))
 let logoTint = styleColor("LOGO_COLOR", .white)
 let entranceDur = styleNum("ENTRANCE", 0.7)
 let risePx = styleNum("RISE", -26)
-print("card style: bg=\(env["BG"] ?? "default") line=\(env["LINE_COLOR"] ?? "default") logo=\(env["LOGO_COLOR"] ?? "default") entrance=\(entranceDur)s rise=\(risePx)px accents=\(accents.count) font=\(displayFontName)")
+print("card style: bg=\(env["BG"] ?? "default") line=\(env["LINE_COLOR"] ?? "default") logo=\(env["LOGO_COLOR"] ?? "default") entrance=\(entranceDur)s rise=\(risePx)px accents=\(accents.count) font=\(displayFontName.isEmpty ? "SF (system)" : displayFontName)")
 
 // Recolor the logo white. GOTCHA (cost a broken end card): a logo PNG can report
 // hasAlpha:yes yet be black ink on an OPAQUE white background — keying on alpha then
@@ -141,7 +141,7 @@ writer.add(input); writer.startWriting(); writer.startSession(atSourceTime: .zer
 func smoothstep(_ v: Double) -> Double { let x = min(1, max(0, v)); return x*x*(3-2*x) }
 let totalFrames = Int((duration * Double(fps)).rounded())
 let lineFont = NSFont(name: displayFontName, size: 54 * sx)
-    ?? NSFont.monospacedSystemFont(ofSize: 54 * sx, weight: .medium)
+    ?? NSFont.systemFont(ofSize: 54 * sx, weight: .regular)
 
 for frame in 0..<totalFrames {
     while !input.isReadyForMoreMediaData { Thread.sleep(forTimeInterval: 0.002) }

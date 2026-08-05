@@ -31,7 +31,7 @@ let width = Int(env["W"] ?? "2560")!, height = Int(env["H"] ?? "1440")!
 let fps: Int32 = Int32(env["FPS"] ?? "60")!
 let sx = CGFloat(width) / 2560.0   // scale all pt sizes off the reference canvas
 
-var displayFontName = env["FONT_NAME"] ?? "Menlo-Bold"
+var displayFontName = env["FONT_NAME"] ?? ""   // empty = SF system font (premium neutral default)
 if let fontFile = env["FONT_FILE"] {
     if let provider = CGDataProvider(url: URL(fileURLWithPath: fontFile) as CFURL),
        let graphicsFont = CGFont(provider) {
@@ -92,7 +92,7 @@ let titleColor = styleColor("TITLE_COLOR", NSColor(white: 0.97, alpha: 1))
 let subColor = styleColor("SUB_COLOR", NSColor(white: 0.67, alpha: 1))
 let entranceDur = styleNum("ENTRANCE", 0.62)
 let risePx = styleNum("RISE", -26)
-print("card style: bg=\(env["BG"] ?? "default") title=\(env["TITLE_COLOR"] ?? "default") sub=\(env["SUB_COLOR"] ?? "default") entrance=\(entranceDur)s rise=\(risePx)px accents=\(accents.count) font=\(displayFontName)")
+print("card style: bg=\(env["BG"] ?? "default") title=\(env["TITLE_COLOR"] ?? "default") sub=\(env["SUB_COLOR"] ?? "default") entrance=\(entranceDur)s rise=\(risePx)px accents=\(accents.count) font=\(displayFontName.isEmpty ? "SF (system)" : displayFontName)")
 
 try? FileManager.default.removeItem(at: output)
 let writer = try AVAssetWriter(outputURL: output, fileType: .mov)
@@ -113,9 +113,9 @@ writer.add(input); writer.startWriting(); writer.startSession(atSourceTime: .zer
 func smoothstep(_ v: Double) -> Double { let x = min(1, max(0, v)); return x*x*(3-2*x) }
 let totalFrames = Int((duration * Double(fps)).rounded())
 let titleFont = NSFont(name: displayFontName, size: (title.count > 18 ? 160 : 196) * sx)
-    ?? NSFont.monospacedSystemFont(ofSize: 176 * sx, weight: .bold)
+    ?? NSFont.systemFont(ofSize: (title.count > 18 ? 160 : 196) * sx, weight: .semibold)
 let subtitleFont = NSFont(name: displayFontName, size: 42 * sx)
-    ?? NSFont.monospacedSystemFont(ofSize: 42 * sx, weight: .medium)
+    ?? NSFont.systemFont(ofSize: 42 * sx, weight: .regular)
 
 for frame in 0..<totalFrames {
     while !input.isReadyForMoreMediaData { Thread.sleep(forTimeInterval: 0.002) }

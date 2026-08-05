@@ -6,9 +6,12 @@ Point Claude at raw screen recordings of your product — an iOS app, a website,
 
 Built on AVFoundation only. No ffmpeg, no video editor, no cloud rendering — every stage is a plain Swift script.
 
-| Mobile path | Programmatic cards |
+| Mobile path — apps & phone-shaped Figma protos | Programmatic title & end cards |
 |---|---|
 | ![mobile](docs/example-mobile.png) | ![card](docs/example-card.png) |
+
+![desktop](docs/example-desktop.png)
+*Desktop path — websites, desktop apps, and landscape Figma prototypes: Screen-Studio-style full-bleed, arrow cursor with click rings, zooms clamped so the page fills every frame.*
 
 ## Why it exists
 
