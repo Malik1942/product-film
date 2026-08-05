@@ -179,29 +179,33 @@ let cues: [Cue] = (env["CUES"] ?? "").split(separator: ";").compactMap {
     let p = $0.split(separator: " ").compactMap { Double($0) }
     return p.count >= 3 ? Cue(t: p[0], fx: p[1], fy: p[2], click: p.count > 3 ? p[3] != 0 : true) : nil
 }.sorted { $0.t < $1.t }
-let glideDur = Double(env["GLIDE"] ?? "") ?? 1.15
+let glideDur = Double(env["GLIDE"] ?? "") ?? 1.05
+// ARRIVE = how early the tip settles on the control before cue time T.
+// RIPPLE = how early the ring peaks relative to T. Defaults are tight so a
+// CDP/instant UI response doesn't change before the ring reads as the click.
+let arriveLead = Double(env["ARRIVE"] ?? "") ?? 0.18
+let rippleLead = Double(env["RIPPLE"] ?? "") ?? 0.0
 func makeCursorLayer() -> CALayer {
     if cursorStyle == "arrow" {
-        // macOS-style pointer: black fill, white outline — readable on light and dark UI.
-        // Path tip sits at the layer's top-left; anchorPoint pins position (and press-dip) to the tip.
+        // Video-comp layers are y-down (origin top-left). Draw the tip at (0,0) and
+        // pin position there so the ripple hotspot and the visible tip are the same point.
         let cs = CGFloat(Double(env["CURSOR_PX"] ?? "") ?? 64)
         let shape = CAShapeLayer()
-        let u = cs / 20.0   // unit scale for a 20pt-tall reference arrow
+        let u = cs / 20.0
         let pts: [(CGFloat, CGFloat)] = [(0,0), (0,16.5), (4.4,12.8), (7.1,18.9), (9.6,17.8), (7.0,11.9), (12.4,11.9)]
         let path = CGMutablePath()
-        // layer coords are y-up; tip (0,0 in pointer space) maps to (0, cs)
-        path.move(to: CGPoint(x: 0, y: cs))
-        for p in pts.dropFirst() { path.addLine(to: CGPoint(x: p.0 * u, y: cs - p.1 * u)) }
+        path.move(to: CGPoint(x: 0, y: 0))
+        for p in pts.dropFirst() { path.addLine(to: CGPoint(x: p.0 * u, y: p.1 * u)) }
         path.closeSubpath()
         shape.path = path
         shape.fillColor = NSColor.black.cgColor
         shape.strokeColor = NSColor.white.cgColor
         shape.lineWidth = max(2, cs * 0.055)
         shape.lineJoin = .round
-        shape.bounds = CGRect(x: 0, y: 0, width: cs * 0.7, height: cs)
-        shape.anchorPoint = CGPoint(x: 0, y: 1)
+        shape.bounds = CGRect(x: -cs * 0.08, y: -cs * 0.08, width: cs * 0.78, height: cs * 1.08)
+        shape.anchorPoint = CGPoint(x: 0.08 / 0.78, y: 0.08 / 1.08) // (0,0) path tip
         shape.shadowColor = NSColor.black.cgColor
-        shape.shadowOpacity = 0.35; shape.shadowRadius = 6; shape.shadowOffset = CGSize(width: 0, height: -2)
+        shape.shadowOpacity = 0.35; shape.shadowRadius = 6; shape.shadowOffset = CGSize(width: 0, height: 2)
         return shape
     } else {
         let dot = CALayer()
@@ -218,9 +222,13 @@ func makeCursorLayer() -> CALayer {
 }
 func addRipple(at fx: Double, _ fy: Double, t: Double) {
     let ripple = CALayer()
-    let r: CGFloat = 46
+    let r: CGFloat = 40
     let bw = screenBox.bounds.width, bh = screenBox.bounds.height
-    ripple.frame = CGRect(x: CGFloat(fx)*bw - r, y: bh*(1-CGFloat(fy)) - r, width: r*2, height: r*2)
+    // Same point as the arrow tip (`position`), never `frame` — frame+scale
+    // drifts the visual centre away from the hotspot in the video-comp layer tree.
+    ripple.bounds = CGRect(x: 0, y: 0, width: r*2, height: r*2)
+    ripple.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+    ripple.position = CGPoint(x: CGFloat(fx)*bw, y: bh*(1-CGFloat(fy)))
     ripple.cornerRadius = r
     if cursorStyle == "arrow" {
         // Screen-Studio-style click ring: dark translucent disc + white ring, reads on any page color
@@ -234,42 +242,44 @@ func addRipple(at fx: Double, _ fy: Double, t: Double) {
     }
     ripple.opacity = 0
     screenBox.addSublayer(ripple)
-    let keys: [NSNumber] = [0, NSNumber(value: max(0, t)/outDur), NSNumber(value: min(1.0, (t+0.1)/outDur)), NSNumber(value: min(1.0, (t+0.5)/outDur))]
+    // Peak at `t` (not t+0.1) — a slow rise after the cue reads as a late ripple.
+    let tPeak = max(0, t)
+    let keys: [NSNumber] = [0, NSNumber(value: max(0, tPeak - 0.03)/outDur), NSNumber(value: min(1.0, tPeak/outDur)), NSNumber(value: min(1.0, (tPeak+0.22)/outDur))]
     let ro = CAKeyframeAnimation(keyPath: "opacity")
-    ro.values = [0, 0, 0.85, 0]; ro.keyTimes = keys
+    ro.values = [0, 0, 0.92, 0]; ro.keyTimes = keys
     ro.duration = outDur; ro.beginTime = AVCoreAnimationBeginTimeAtZero
     ro.isRemovedOnCompletion = false; ro.fillMode = .forwards
     ripple.add(ro, forKey: "o")
     let rs = CAKeyframeAnimation(keyPath: "transform.scale")
-    rs.values = [0.4, 0.4, 0.7, 1.5]; rs.keyTimes = keys
+    rs.values = [0.55, 0.55, 0.92, 1.35]; rs.keyTimes = keys
     rs.duration = outDur; rs.beginTime = AVCoreAnimationBeginTimeAtZero
     rs.isRemovedOnCompletion = false; rs.fillMode = .forwards
     ripple.add(rs, forKey: "s")
 }
 if !cues.isEmpty && cursorStyle == "none" {
-    for c in cues where c.click { addRipple(at: c.fx, c.fy, t: c.t - 0.15) }
+    for c in cues where c.click { addRipple(at: c.fx, c.fy, t: c.t - rippleLead) }
 } else if !cues.isEmpty {
     let bw = screenBox.bounds.width, bh = screenBox.bounds.height
     func pt(_ fx: Double, _ fy: Double) -> NSPoint { NSPoint(x: CGFloat(fx)*bw, y: bh*(1-CGFloat(fy))) }
     let fromParts = (env["CURSOR_FROM"] ?? "").split(separator: ",").compactMap { Double($0) }
     let from = fromParts.count == 2 ? (fromParts[0], fromParts[1]) : (0.5, 0.85)
-    let fadeIn = max(0, Double(env["CURSOR_IN"] ?? "") ?? (cues[0].t - 0.25 - glideDur - 0.2))
+    let fadeIn = max(0, Double(env["CURSOR_IN"] ?? "") ?? (cues[0].t - arriveLead - glideDur - 0.15))
     let cur = makeCursorLayer()
     cur.opacity = 0
     cur.position = pt(from.0, from.1)
     screenBox.addSublayer(cur)
-    // position path: hold at entry, then eased glide into each target, arriving 0.25s before its response
+    // position path: hold at entry, then eased glide into each target
     var pTimes: [Double] = [0, fadeIn], pVals: [NSPoint] = [pt(from.0, from.1), pt(from.0, from.1)], pEase: [Bool] = [false, false]
     var prevT = fadeIn
     for c in cues {
-        let arrive = c.t - 0.25
+        let arrive = c.t - arriveLead
         let depart = max(prevT, arrive - glideDur)
         if depart > prevT + 0.01 { pTimes.append(depart); pVals.append(pVals.last!); pEase.append(false) }
         if arrive > (pTimes.last ?? 0) + 0.01 {
             pTimes.append(arrive); pVals.append(pt(c.fx, c.fy)); pEase.append(true)
             prevT = arrive
         }
-        if c.click { addRipple(at: c.fx, c.fy, t: c.t - 0.15) }
+        if c.click { addRipple(at: c.fx, c.fy, t: c.t - rippleLead) }
     }
     if outDur > prevT + 0.01 { pTimes.append(outDur); pVals.append(pVals.last!); pEase.append(false) }
     let glide = CAKeyframeAnimation(keyPath: "position")
@@ -290,7 +300,7 @@ if !cues.isEmpty && cursorStyle == "none" {
     // press dip at every cue (anchored at the arrow's tip, so the point stays put)
     var sTimes: [Double] = [0], sVals: [Double] = [1]
     for c in cues where c.click {
-        for (dt, v) in [(-0.25, 1.0), (-0.12, 0.78), (0.02, 1.0)] where c.t + dt > (sTimes.last ?? 0) + 0.005 {
+        for (dt, v) in [(-arriveLead, 1.0), (-rippleLead - 0.02, 0.82), (rippleLead + 0.05, 1.0)] where c.t + dt > (sTimes.last ?? 0) + 0.005 {
             sTimes.append(c.t + dt); sVals.append(v)
         }
     }
