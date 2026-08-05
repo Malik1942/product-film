@@ -1,50 +1,100 @@
 # product-film
 
-An AVFoundation-based product-film pipeline for Claude Code — turns screen recordings of any product (iOS app, website, desktop app, Figma prototype) into a scored, verified promo film. No ffmpeg, no video editor: every stage is a plain Swift script driven from the terminal.
+**A Claude Code agent skill that turns screen recordings into scored, verified product films.**
 
-Version 1.0.0.
+Point Claude at raw screen recordings of your product — an iOS app, a website, a desktop app, or a Figma prototype — and this skill gives it the full production pipeline: measuring real interaction times, splicing beats, compositing into a device mockup (mobile) or Screen-Studio-style full-bleed (desktop) with camera moves and click cues, stitching acts with title cards, synthesizing a license-free soundtrack, and auditing the final cut scene-by-scene against the approved script.
+
+Built on AVFoundation only. No ffmpeg, no video editor, no cloud rendering — every stage is a plain Swift script.
+
+| Mobile path | Programmatic cards |
+|---|---|
+| ![mobile](docs/example-mobile.png) | ![card](docs/example-card.png) |
+
+## Why it exists
+
+Agent-cut product films usually fail the same ways: trims made from *intended* timings instead of measured ones, cuts landing mid-animation, reveals with no visible click, zooms focused on the wrong thing, watermarked stock audio, and cards carrying last project's copy. Every rule in this skill is a codified rejection from real film deliveries — the playbook is the accumulated taste, and the pipeline's verification gates (frame-scan before trimming, full-res card reads, a mandatory gap audit delivered with every render) are what keep quality stable across sessions.
 
 ## Requirements
 
-- macOS with Xcode Command Line Tools (`swift` on PATH). For simulator work set `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
-- The companion **screen-recording** skill for the capture stage (staging, take protocol, and `scripts/autoplan.py` for camera-plan derivation; autoplan needs `python3`).
-- Optional: the Figma MCP server, only for the Figma fallback card path.
+- macOS with Xcode Command Line Tools (`swift` on PATH)
+- [Claude Code](https://claude.com/claude-code)
+- For iOS Simulator capture: Xcode (`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`)
 
-## Installation
+## Install
 
-Copy this directory to `~/.claude/skills/product-film/` (personal, all projects) or `<repo>/.claude/skills/product-film/` (project-scoped). Nothing else to install — the iPhone mockup ships in `assets/` and every script resolves it relative to itself.
-
-## Quick start
-
-1. **Script first.** Write the six-block film script (`references/writing-the-script.md` has the template): vibe, frame, scene list with interaction+payoff+data, words, brand, sound. Get it approved before rendering anything.
-2. **Capture** takes with the screen-recording skill, into a durable project directory.
-3. From that directory, run the pipeline (contracts in `references/playbook.md`):
+**curl:**
 
 ```bash
-SKILL=~/.claude/skills/product-film/scripts
-swift $SKILL/scan.swift take1.mp4 sheet.png            # eyeball the take
-swift $SKILL/diffscan.swift take1.mp4                  # measure real interaction times (diffscan2 for desktop)
-swift $SKILL/condense.swift take1.mp4 scene1.mp4 "12.7,15.2;25.7,28.2,1.5"
-swift $SKILL/composite2.swift scene1.mp4 scene1-comp.mp4 0 8 "0 .5 .5 1.02 0; 3 .27 .8 1.4 0"
-FONT_FILE=Brand.ttf ACCENTS=FFEE51,0EA5E9 swift $SKILL/title-card-template.swift card1.mov 2.4 "FAST CAPTURE"
-cp $SKILL/stitch-template.swift .                      # template: edit clips + transitions in-file
-swift stitch-template.swift                            # -> film.mp4
-cp $SKILL/score-template.swift .                       # template: edit chords/BPM/automation in-file
-swift score-template.swift                             # -> score.m4a
-swift $SKILL/mux.swift film.mp4 score.m4a "Film v1.mp4"
+curl -fsSL https://raw.githubusercontent.com/Malik1942/product-film/main/install.sh | bash
 ```
 
-4. **Verify frames and run the gap audit** (`references/gap-audit.md`) — both are mandatory; deliver the audit with the film.
+**git:**
 
-## Layout
+```bash
+git clone https://github.com/Malik1942/product-film.git ~/.claude/skills/product-film
+```
 
-- `SKILL.md` — triggers, pipeline order, non-negotiables, symptom table
-- `references/playbook.md` — stage contracts, script arguments, iron laws, camera grammar
-- `references/writing-the-script.md` — the six-block script contract + template
-- `references/gap-audit.md` — the mandatory per-render audit format
-- `scripts/` — utilities (argv-driven, run as-is) and templates (copy per project, edit in-file)
-- `assets/iphone-mockup.png` — default device frame for the mobile path (`FRAME_PNG`/`SCREEN_RECT` env to substitute any other)
+**gh:**
 
-## Asset note
+```bash
+gh repo clone Malik1942/product-film ~/.claude/skills/product-film
+```
 
-The bundled iPhone mockup is a device-bezel image of unverified origin, used here as a personal working asset. It is trivially replaceable (`FRAME_PNG=/path.png SCREEN_RECT=x,y,w,h`); verify redistribution rights or substitute your own bezel render before publishing this skill beyond personal use. No fonts are bundled — brand fonts are supplied per project via `FONT_FILE`.
+Installing to `~/.claude/skills/` makes the skill available in every project; use `<repo>/.claude/skills/product-film` instead to scope it to one repo. Claude Code discovers it automatically — no registration step.
+
+## How to prompt
+
+The skill triggers on any product/promo-video work. Natural prompts:
+
+```text
+Make a 60-second promo film for my app. Raw recordings are in ~/Desktop/MyAppTakes.
+```
+
+```text
+Film my website at example.com into a Screen-Studio-style demo — desktop grammar, arrow cursor.
+```
+
+```text
+The page turn in scene 2 feels laggy and the zoom focuses on the wrong thing. Fix both.
+```
+
+Style direction works at two levels, and the skill knows the difference:
+
+- **Vibe-level** — cascades to everything (edit rhythm, camera energy, cards, score):
+  `"Make it calm and premium, like a sundown ambient track."` / `"Playful and energetic."`
+- **Scoped** — touches only what you named:
+  `"Make the logo gold on the end card."` / `"Slow the title card entrance."`
+
+Two things to expect from the workflow:
+
+1. **It will ask for a script before rendering.** Films are built from a six-block script (vibe, frame, scene list with interaction + payoff + data, words, brand, sound). If your brief is vague, Claude hands you a fill-in template first — that's by design; the approval gate is what prevents expensive wrong-direction renders.
+2. **Every delivery includes a gap audit.** Each scene of the actual rendered file is graded against the script (MET / PARTIAL / CONTRADICTED / MISSING / DEVIATES) from extracted frames, with editing gaps fixed before delivery and capture gaps named plainly.
+
+## What's inside
+
+| Path | What |
+|---|---|
+| `SKILL.md` | Triggers, pipeline order, non-negotiables, symptom→fix table |
+| `references/playbook.md` | Stage contracts, script arguments, camera grammar, iron laws |
+| `references/writing-the-script.md` | The six-block film-script contract + fill-in template |
+| `references/gap-audit.md` | The mandatory per-render audit format |
+| `scripts/` | The pipeline: scan, diffscan/diffscan2, condense, composite2, stitch, score ×2, mux, title/end cards |
+| `assets/iphone-mockup.png` | Neutral device frame (generated, MIT-licensed) |
+
+Scripts come in two classes: **utilities** run as-is with explicit argv (`swift scripts/mux.swift film.mp4 score.m4a out.mp4`), **templates** (stitch, score) are copied into your project and edited in-file — the clip order and chord tables *are* the interface. No script contains machine-specific or `/tmp` paths.
+
+## Device frames
+
+The bundled frame is a clean generated bezel (safe to redistribute). For a photorealistic device, drop in any bezel image with a transparent screen cutout — e.g. Apple's official product bezels from [Apple Design Resources](https://developer.apple.com/design/resources/) (check Apple's usage terms):
+
+```bash
+FRAME_PNG=/path/to/bezel.png SCREEN_RECT=x,y,w,h swift scripts/composite2.swift ...
+```
+
+## Companion skill
+
+Capture (simulator staging, take protocol, auto-zoom derivation) lives in a separate `screen-recording` skill in the author's setup. This repo stands alone for editing/compositing/scoring — record takes with whatever you have (`xcrun simctl io recordVideo`, `screencapture -v`), then measure with `diffscan` and cut from measured times.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Brand fonts are never bundled; supply yours per project via `FONT_FILE`.
