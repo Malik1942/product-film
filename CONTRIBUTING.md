@@ -12,11 +12,12 @@ Issues and PRs are welcome. This skill has one unusual property worth understand
 
 - **Utilities** (scan, diffscan×2, condense, composite2, mux, card templates): every required input via explicit argv; optional behavior via env; usage line + clean error on bad input.
 - **Templates** (stitch, score×2): the creative contract lives in-file by design; env vars (`CLIPS_DIR`, `OUT`) are only for portable path resolution. Please don't "fix" them into CLI tools.
+- **Agent-agnostic** (Claude Code, Codex, Cursor): `SKILL.md` and `references/` are read by whichever agent is driving, so keep them free of agent-specific names, invocation syntax and skills-directory paths — write `<your-skills-dir>/…`, not `~/.claude/skills/…`. Agent-specific detail belongs in the README's install table and `install.sh`, nowhere else. Every pipeline stage must stay runnable by hand from a shell.
 
 ## Verifying your change
 
 ```bash
-mkdir /tmp/cleanroom && cd /tmp/cleanroom   # any empty dir
+mkdir ~/Desktop/cleanroom && cd ~/Desktop/cleanroom   # any empty durable dir — not /tmp (iron law 11)
 # render a card, composite it, stitch, score, mux — the README quick start is the test script
 ```
 

@@ -14,7 +14,7 @@ Every script is plain Swift, run with `swift <file> <args>` (Command Line Tools 
 ## Stage order (never reorder)
 
 1. **Script/plot doc → approval.** No renders before the scene list is signed off. What the user must articulate (six blocks: vibe, frame, scene list with interaction+payoff+data, words, brand, sound) + the fill-in template live in `writing-the-script.md` — hand it to the user when their brief is vague. **If the brief doesn't state the film's vibe/style, ask before the first render** — offer two or three named directions with references; vibe sets tempo, cut rhythm, camera energy and the whole score, and guessing it means rebuilding both the score and the edit. Scenes = one idea each; feature depictions use real UI and real outputs only.
-2. **Capture** — any surface: iOS simulator, website, or Figma prototype. The screen-recording skill owns this stage (staging, take protocol, per-surface recorders).
+2. **Capture** — any surface: iOS simulator, website, or Figma prototype. The companion `screen-recording` skill owns this stage when installed (staging, take protocol, per-surface recorders); without it, capture with any recorder (`xcrun simctl io recordVideo`, `screencapture -v`) — stage 3 measures whatever you hand it.
 3. **Measure** — scan.swift + diffscan.swift (mobile) / diffscan2.swift (desktop). *Mandatory before any trim.*
 4. **Condense** — condense.swift splices beats.
 5. **Composite** — composite2.swift puts the recording in the device mockup (mobile) or cover-fills the canvas (desktop `FILL=1`) with camera + interaction cues.
@@ -59,7 +59,7 @@ Clip paths resolve against `CLIPS_DIR` env (default cwd); output via `OUT` env (
 - `"F"` fade-up-from-black (opening→first scene, 0.4–0.5s)
 - `"Z"` zoom-through (within acts, 0.55s): outgoing accelerates INTO the screen, blend hidden at peak velocity, incoming decelerates out. The premium default.
 - `"B"` breath (act boundaries): 0.5s fade-out → black rest (`dur`) → 0.5s fade-up. Cards are clips sandwiched between two `B 0.1` boundaries.
-- Boundary kinds already rejected by Malik, weakest to strongest of the taste ladder: hard cut / black gap ("laggy, cheap"), plain cross-dissolves ("hard/fragile", ghosting = two frames at once), side-slide pushes ("PPT"). Z and F are the only approved kinds; B is structure, not a transition.
+- Boundary kinds already rejected in review, weakest to strongest of the taste ladder: hard cut / black gap ("laggy, cheap"), plain cross-dissolves ("hard/fragile", ghosting = two frames at once), side-slide pushes ("PPT"). Z and F are the only approved kinds; B is structure, not a transition.
 - **Instructions must tile the exact composition duration** — the template snaps the last instruction to comp.duration (sub-ms CMTime gap ⇒ "Operation Stopped").
 
 ### score-template.swift / score-playful-template.swift (copy per project; edit constants at top)
@@ -86,7 +86,7 @@ Decide once, at script time, from the product's aspect — not from whether it's
 | Cursor | White touch dot, soft ripple | 64px arrow (black, white outline) + dark-disc/white-ring click — the dot ripple is invisible on light desktop UI |
 | Interactions & animations | Whole animation in one unbroken segment (iron law 2) | Same — and hold the camera STILL while a zoomed UI animation plays; never pan through it |
 | Stitch | F/Z/B grammar, cards between acts | Identical grammar — Z zoom-throughs read even better full-bleed |
-| autoplan | `autoplan.py taps.json` | `autoplan.py taps.json --desktop` (emits FILL=1 invocation) — the script lives in the **screen-recording skill** (`~/.claude/skills/screen-recording/scripts/autoplan.py`) |
+| autoplan | `autoplan.py taps.json` | `autoplan.py taps.json --desktop` (emits FILL=1 invocation) — the script ships with the companion **screen-recording** skill if installed (`<your-skills-dir>/screen-recording/scripts/autoplan.py`); otherwise hand-write the plan |
 
 **The two-beat camera rule (desktop) — the single biggest source of "the zoom focuses on the wrong thing":**
 - **Beat A — the control.** Frame the thing being clicked, tight enough to READ its label, arriving ≥0.3s before the click. Never be mid-move when the click lands.
@@ -128,5 +128,5 @@ Decide once, at script time, from the product's aspect — not from whether it's
 12. **Verify by extracted frames after every render** — timeline arithmetic: clip starts = prev start + prev dur − overlap (F/Z) or + gap (B).
 13. **READ every card's words at full resolution and diff them against the script's Words block — including cards you inherited.** Card copy is the one thing frame-verification silently skips: on a contact sheet the type is too small to read, so a wrong line survives every check that looks at framing, exposure and edges. A real instance: an Inkwork film shipped an opening card reading "YOUR THOUGHTS DON'T LIVE IN A GRID." — copy belonging to a different product (Oryne) — while the approved script said "QR, WITH A POINT OF VIEW.". It was generated once by another agent and then reused across versions unchecked. Reused assets need this check MORE than fresh ones, not less. Same pass: card accents/fonts should be the filmed product's palette, not the previous project's.
 
-## Pacing grammar (Malik-approved end state)
+## Pacing grammar (approved end state)
 Acts announced by brand-font title cards on black; breaths (1s black) between acts; zoom-throughs within acts; onboarding pages ≥2s each, page 1 ~2s minimum; transcript/typing sections sped 1.35×; payoff scenes (Ask) longest; end card held, no fade-out. Music ducks to near-silence in every breath/card and builds act ceilings toward the payoff act.

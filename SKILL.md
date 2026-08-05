@@ -1,12 +1,12 @@
 ---
 name: product-film
 version: 1.0.0
-description: Use when making or editing a product/promo video from screen recordings of any product — a phone app, a website, a desktop app, or a Figma prototype — capturing takes, trimming/splicing scenes, compositing with camera moves and click cues (device mockup for mobile, full-bleed Screen-Studio-style for desktop), stitching scenes with transitions and title cards, adding a soundtrack, or when a cut feels laggy, ghosty, unclear, "PPT-like", or shows black margins/floating-card framing on desktop content. Also for App Store end cards and verifying edits frame-by-frame. For a fast narrated internal release reel built from merged PRs ("what's new this week"), use the whats-new-movie skill instead — this skill is the premium/public tier.
+description: Use when making or editing a product/promo video from screen recordings of any product — a phone app, a website, a desktop app, or a Figma prototype — capturing takes, trimming/splicing scenes, compositing with camera moves and click cues (device mockup for mobile, full-bleed Screen-Studio-style for desktop), stitching scenes with transitions and title cards, adding a soundtrack, or when a cut feels laggy, ghosty, unclear, "PPT-like", or shows black margins/floating-card framing on desktop content. Also for App Store end cards and verifying edits frame-by-frame. For a fast narrated internal release reel built from merged PRs ("what's new this week"), prefer a lighter release-reel workflow if one is available (e.g. a `whats-new-movie` skill) — this skill is the premium/public tier.
 ---
 
 # product-film
 
-AVFoundation-based film pipeline (no ffmpeg, no editors). Battle-tested across 23 versions of the Oryne promo and 7 of the Inkwork film; the taste rules encode Malik's rejections — treat them as law, not suggestions.
+AVFoundation-based film pipeline (no ffmpeg, no editors). Battle-tested across 23 versions of the Oryne promo and 7 of the Inkwork film; the taste rules encode rejections from those real deliveries — treat them as law, not suggestions.
 
 **This skill learns — but sort what it learns into three tiers.** (1) *Project-local style direction* (this film's vibe, palette, a one-off override) lives in the film's script and project memory — it NEVER mutates the skill. (2) A *stable user preference* is persisted only when clearly recurring or explicitly stated ("from now on…"). (3) A *globally reusable production law* — a craft ruling that transfers to any product — is encoded into these files (law, mistake row, or refined rule) before the next film; an unwritten rejection will be repeated. When an override contradicts a default, encode the GENERALIZED lesson, never the literal choice: a user insisting on cross-dissolves teaches "explicit project styling overrides transition defaults," not "cross-dissolves are the new default."
 
@@ -21,7 +21,7 @@ AVFoundation-based film pipeline (no ffmpeg, no editors). Battle-tested across 2
 | # | Stage | Tool |
 |---|---|---|
 | 1 | Script/plot doc → **user approval gate** | markdown in the project's durable directory |
-| 2 | Capture takes (app / web / Figma proto) | screen-recording skill |
+| 2 | Capture takes (app / web / Figma proto) | companion `screen-recording` skill if installed, else any recorder (`xcrun simctl io recordVideo`, `screencapture -v`) |
 | 3 | **Measure** (mandatory) | scan.swift · diffscan.swift (mobile) / diffscan2.swift (desktop) |
 | 4 | Splice beats | condense.swift (hold-mode for freezes) |
 | 5 | Composite + camera + click cues (mobile OR desktop path) | composite2.swift |
@@ -34,7 +34,7 @@ AVFoundation-based film pipeline (no ffmpeg, no editors). Battle-tested across 2
 ## Non-negotiables
 
 - Frame-scan every take before trimming — input latency makes planned timings fiction.
-- **Two presentation paths, chosen by form factor** (playbook: "Two presentation paths"). Portrait/phone content → mobile path: device mockup (or FRAMELESS card), touch-dot cursor. Landscape/desktop content (websites, desktop apps, landscape protos) → desktop path: `FILL=1` full-bleed — the page fills the canvas at every zoom level, zooms expand toward the cursor's interaction point, pans clamp to content bounds, arrow cursor + click ring, `autoplan.py --desktop` (autoplan lives in the screen-recording skill's `scripts/`). Never put a desktop page in the floating card.
+- **Two presentation paths, chosen by form factor** (playbook: "Two presentation paths"). Portrait/phone content → mobile path: device mockup (or FRAMELESS card), touch-dot cursor. Landscape/desktop content (websites, desktop apps, landscape protos) → desktop path: `FILL=1` full-bleed — the page fills the canvas at every zoom level, zooms expand toward the cursor's interaction point, pans clamp to content bounds, arrow cursor + click ring, `autoplan.py --desktop` (autoplan ships with the companion `screen-recording` skill; without it, write the camera plan by hand from diffscan2's centroids). Never put a desktop page in the floating card.
 - Never cut onto an animation's first moving frame; splice whole transitions.
 - Every feature reveal is preceded by a visible click cue (cursor → press → ripple).
 - Transitions: zoom-through within acts, black breaths + brand-font title cards between acts. Cross-dissolves and side-pushes are pre-rejected.

@@ -1,8 +1,8 @@
 # product-film
 
-**A Claude Code agent skill that turns screen recordings into scored, verified product films.**
+**An agent skill that turns screen recordings into scored, verified product films.** Works with Claude Code, Codex and Cursor — it's a plain `SKILL.md` skill plus Swift scripts, with nothing agent-specific inside.
 
-Point Claude at raw screen recordings of your product — an iOS app, a website, a desktop app, or a Figma prototype — and this skill gives it the full production pipeline: measuring real interaction times, splicing beats, compositing into a device mockup (mobile) or Screen-Studio-style full-bleed (desktop) with camera moves and click cues, stitching acts with title cards, synthesizing a license-free soundtrack, and auditing the final cut scene-by-scene against the approved script.
+Point your coding agent at raw screen recordings of your product — an iOS app, a website, a desktop app, or a Figma prototype — and this skill gives it the full production pipeline: measuring real interaction times, splicing beats, compositing into a device mockup (mobile) or Screen-Studio-style full-bleed (desktop) with camera moves and click cues, stitching acts with title cards, synthesizing a license-free soundtrack, and auditing the final cut scene-by-scene against the approved script.
 
 Built on AVFoundation only. No ffmpeg, no video editor, no cloud rendering — every stage is a plain Swift script.
 
@@ -22,30 +22,40 @@ Agent-cut product films usually fail the same ways: trims made from *intended* t
 ## Requirements
 
 - macOS with Xcode Command Line Tools (`swift` on PATH)
-- [Claude Code](https://claude.com/claude-code)
+- An agent that reads `SKILL.md` skills — [Claude Code](https://claude.com/claude-code), [Codex](https://developers.openai.com/codex), or [Cursor](https://cursor.com)
 - For iOS Simulator capture: Xcode (`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`)
 
 ## Install
 
-**curl:**
+**curl** — installs for every supported agent (one real copy, the rest symlinked to it):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Malik1942/product-film/main/install.sh | bash
 ```
 
-**git:**
+Narrow it to the agents you use, or scope it to a single repo:
+
+```bash
+./install.sh --codex --cursor
+```
+
+```bash
+./install.sh --project
+```
+
+**git / gh** — clone straight into whichever directory your agent reads:
 
 ```bash
 git clone https://github.com/Malik1942/product-film.git ~/.claude/skills/product-film
 ```
 
-**gh:**
+| Agent | Personal scope | Project scope |
+|---|---|---|
+| Claude Code | `~/.claude/skills/` | `<repo>/.claude/skills/` |
+| Codex | `~/.agents/skills/` | `<repo>/.agents/skills/` |
+| Cursor | `~/.cursor/skills/` or `~/.agents/skills/` | `<repo>/.cursor/skills/` or `<repo>/.agents/skills/` |
 
-```bash
-gh repo clone Malik1942/product-film ~/.claude/skills/product-film
-```
-
-Installing to `~/.claude/skills/` makes the skill available in every project; use `<repo>/.claude/skills/product-film` instead to scope it to one repo. Claude Code discovers it automatically — no registration step.
+Cursor also reads the Claude Code and Codex directories, so one personal install usually covers all three. Personal scope makes the skill available in every project; project scope keeps it with one repo and lets you commit it. No registration step on any of them — the agent discovers `SKILL.md` on its own.
 
 ## How to prompt
 
@@ -63,6 +73,8 @@ Film my website at example.com into a Screen-Studio-style demo — desktop gramm
 The page turn in scene 2 feels laggy and the zoom focuses on the wrong thing. Fix both.
 ```
 
+If your agent supports explicit invocation you can also name it directly — `/product-film` in Claude Code and Cursor, `$product-film` in Codex.
+
 Style direction works at two levels, and the skill knows the difference:
 
 - **Vibe-level** — cascades to everything (edit rhythm, camera energy, cards, score):
@@ -72,7 +84,7 @@ Style direction works at two levels, and the skill knows the difference:
 
 Two things to expect from the workflow:
 
-1. **It will ask for a script before rendering.** Films are built from a six-block script (vibe, frame, scene list with interaction + payoff + data, words, brand, sound). If your brief is vague, Claude hands you a fill-in template first — that's by design; the approval gate is what prevents expensive wrong-direction renders.
+1. **It will ask for a script before rendering.** Films are built from a six-block script (vibe, frame, scene list with interaction + payoff + data, words, brand, sound). If your brief is vague, the agent hands you a fill-in template first — that's by design; the approval gate is what prevents expensive wrong-direction renders.
 2. **Every delivery includes a gap audit.** Each scene of the actual rendered file is graded against the script (MET / PARTIAL / CONTRADICTED / MISSING / DEVIATES) from extracted frames, with editing gaps fixed before delivery and capture gaps named plainly.
 
 ## What's inside
@@ -86,7 +98,7 @@ Two things to expect from the workflow:
 | `scripts/` | The pipeline: scan, diffscan/diffscan2, condense, composite2, stitch, score ×2, mux, title/end cards |
 | `assets/iphone-mockup.png` | Neutral device frame (generated, MIT-licensed) |
 
-Scripts come in two classes: **utilities** run as-is with explicit argv (`swift scripts/mux.swift film.mp4 score.m4a out.mp4`), **templates** (stitch, score) are copied into your project and edited in-file — the clip order and chord tables *are* the interface. No script contains machine-specific or `/tmp` paths.
+Scripts come in two classes: **utilities** run as-is with explicit argv (`swift scripts/mux.swift film.mp4 score.m4a out.mp4`), **templates** (stitch, score) are copied into your project and edited in-file — the clip order and chord tables *are* the interface. No script contains machine-specific or `/tmp` paths, and nothing in the pipeline depends on which agent is driving it — you can run every stage by hand.
 
 ## Device frames
 
