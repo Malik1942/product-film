@@ -6,7 +6,7 @@ Point your coding agent at raw screen recordings of your product — an iOS app,
 
 Built on AVFoundation only. No ffmpeg, no video editor, no cloud rendering — every stage is a plain Swift script.
 
-| Mobile path — from the Oryne launch film | Brand-font title card |
+| Mobile path — from the Oryne launch film | End card — in the product's brand font |
 |---|---|
 | ![mobile](docs/example-mobile.png) | ![card](docs/example-card.png) |
 
