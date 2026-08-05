@@ -12,7 +12,7 @@ Issues and PRs are welcome. This skill has one unusual property worth understand
 
 - **Utilities** (scan, diffscan×2, condense, composite2, mux, card templates): every required input via explicit argv; optional behavior via env; usage line + clean error on bad input.
 - **Templates** (stitch, score×2): the creative contract lives in-file by design; env vars (`CLIPS_DIR`, `OUT`) are only for portable path resolution. Please don't "fix" them into CLI tools.
-- **Agent-agnostic** (Claude Code, Codex, Cursor): `SKILL.md` and `references/` are read by whichever agent is driving, so keep them free of agent-specific names, invocation syntax and skills-directory paths — write `<your-skills-dir>/…`, not `~/.claude/skills/…`. Agent-specific detail belongs in the README's install table and `install.sh`, nowhere else. Every pipeline stage must stay runnable by hand from a shell.
+- **Agent-agnostic.** `SKILL.md` and `references/` are read by whichever agent is driving — Codex, Cursor, Claude Code or the next one — so keep them free of agent names, invocation syntax and vendor skills-directory paths: write `<your-skills-dir>/…`, never a vendor-specific one. No agent is this repo's default, and none should read as the primary. Agent-specific detail belongs in the README's directory table and `install.sh`, nowhere else. Every pipeline stage must stay runnable by hand from a shell.
 
 ## Verifying your change
 

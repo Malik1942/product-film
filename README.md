@@ -1,6 +1,6 @@
 # product-film
 
-**An agent skill that turns screen recordings into scored, verified product films.** Works with Claude Code, Codex and Cursor — it's a plain `SKILL.md` skill plus Swift scripts, with nothing agent-specific inside.
+**An agent skill that turns screen recordings into scored, verified product films.** It's a plain `SKILL.md` skill plus Swift scripts with nothing agent-specific inside, so it runs on any agent that reads the format — Codex, Cursor and Claude Code today.
 
 Point your coding agent at raw screen recordings of your product — an iOS app, a website, a desktop app, or a Figma prototype — and this skill gives it the full production pipeline: measuring real interaction times, splicing beats, compositing into a device mockup (mobile) or Screen-Studio-style full-bleed (desktop) with camera moves and click cues, stitching acts with title cards, synthesizing a license-free soundtrack, and auditing the final cut scene-by-scene against the approved script.
 
@@ -22,7 +22,7 @@ Agent-cut product films usually fail the same ways: trims made from *intended* t
 ## Requirements
 
 - macOS with Xcode Command Line Tools (`swift` on PATH)
-- An agent that reads `SKILL.md` skills — [Claude Code](https://claude.com/claude-code), [Codex](https://developers.openai.com/codex), or [Cursor](https://cursor.com)
+- Any agent that reads `SKILL.md` skills — e.g. [Codex](https://developers.openai.com/codex), [Cursor](https://cursor.com), [Claude Code](https://claude.com/claude-code)
 - For iOS Simulator capture: Xcode (`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`)
 
 ## Install
@@ -43,19 +43,20 @@ Narrow it to the agents you use, or scope it to a single repo:
 ./install.sh --project
 ```
 
-**git / gh** — clone straight into whichever directory your agent reads:
+**git / gh** — clone straight into a directory your agent reads. `.agents/skills/` is the shared cross-agent convention, so it's the widest default:
 
 ```bash
-git clone https://github.com/Malik1942/product-film.git ~/.claude/skills/product-film
+git clone https://github.com/Malik1942/product-film.git ~/.agents/skills/product-film
 ```
 
-| Agent | Personal scope | Project scope |
-|---|---|---|
-| Claude Code | `~/.claude/skills/` | `<repo>/.claude/skills/` |
-| Codex | `~/.agents/skills/` | `<repo>/.agents/skills/` |
-| Cursor | `~/.cursor/skills/` or `~/.agents/skills/` | `<repo>/.cursor/skills/` or `<repo>/.agents/skills/` |
+| Skills directory | Read by |
+|---|---|
+| `~/.agents/skills/` | Codex, Cursor |
+| `~/.claude/skills/` | Claude Code, Cursor |
+| `~/.cursor/skills/` | Cursor |
+| `~/.codex/skills/` | Cursor, older Codex builds |
 
-Cursor also reads the Claude Code and Codex directories, so one personal install usually covers all three. Personal scope makes the skill available in every project; project scope keeps it with one repo and lets you commit it. No registration step on any of them — the agent discovers `SKILL.md` on its own.
+Swap `~/` for `<repo>/` to scope the skill to one repo and commit it with the project; the personal directories make it available everywhere. Any of these can be a symlink to a single checkout, which is what `install.sh` sets up — one copy to update, every agent current. No registration step anywhere: agents discover `SKILL.md` on their own.
 
 ## How to prompt
 
@@ -73,7 +74,7 @@ Film my website at example.com into a Screen-Studio-style demo — desktop gramm
 The page turn in scene 2 feels laggy and the zoom focuses on the wrong thing. Fix both.
 ```
 
-If your agent supports explicit invocation you can also name it directly — `/product-film` in Claude Code and Cursor, `$product-film` in Codex.
+If your agent supports explicit invocation you can also name it directly — `$product-film` in Codex, `/product-film` in Cursor and Claude Code.
 
 Style direction works at two levels, and the skill knows the difference:
 
@@ -110,7 +111,7 @@ FRAME_PNG=/path/to/bezel.png SCREEN_RECT=x,y,w,h swift scripts/composite2.swift 
 
 ## Companion skill
 
-Capture (simulator staging, take protocol, auto-zoom derivation) lives in a separate `screen-recording` skill in the author's setup. This repo stands alone for editing/compositing/scoring — record takes with whatever you have (`xcrun simctl io recordVideo`, `screencapture -v`), then measure with `diffscan` and cut from measured times.
+Capture (simulator staging, take protocol, auto-zoom derivation) lives in a separate `screen-recording` skill, not published here. This repo stands alone for editing/compositing/scoring — record takes with whatever you have (`xcrun simctl io recordVideo`, `screencapture -v`), then measure with `diffscan` and cut from measured times.
 
 ## Contributing
 

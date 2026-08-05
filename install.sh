@@ -1,5 +1,6 @@
 #!/bin/bash
-# product-film installer — installs the skill for Claude Code, Codex and/or Cursor.
+# product-film installer — installs the skill for any SKILL.md agent.
+# Supported today: Codex, Cursor, Claude Code. No agent is treated as the default.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/Malik1942/product-film/main/install.sh | bash
@@ -40,14 +41,17 @@ if [ $((WANT_CLAUDE + WANT_CODEX + WANT_CURSOR)) -eq 0 ]; then
   WANT_CLAUDE=1; WANT_CODEX=1; WANT_CURSOR=1
 fi
 
-# Skill directories each agent reads. Codex's documented path is .agents/skills;
-# .codex/skills is kept as a compatibility target for older Codex builds.
+# Skill directories, vendor-neutral first: .agents/skills is the shared convention
+# (Codex's documented path, and read natively by Cursor), so it holds the real files
+# whenever it applies. .codex/skills is a compatibility target for older Codex builds.
+# No agent is privileged — the canonical copy just goes in the most widely-read dir.
 TARGETS=()
 if [ -n "$EXPLICIT_DEST" ]; then
   TARGETS=("$EXPLICIT_DEST")
 else
+  [ $((WANT_CODEX + WANT_CURSOR)) -gt 0 ] && TARGETS+=("$ROOT/.agents/skills/$SKILL")
   [ "$WANT_CLAUDE" = 1 ] && TARGETS+=("$ROOT/.claude/skills/$SKILL")
-  [ "$WANT_CODEX"  = 1 ] && TARGETS+=("$ROOT/.agents/skills/$SKILL" "$ROOT/.codex/skills/$SKILL")
+  [ "$WANT_CODEX"  = 1 ] && TARGETS+=("$ROOT/.codex/skills/$SKILL")
   [ "$WANT_CURSOR" = 1 ] && TARGETS+=("$ROOT/.cursor/skills/$SKILL")
 fi
 
@@ -81,7 +85,7 @@ done
 
 echo
 echo "Ask your agent for a product film — it discovers the skill automatically."
-echo "  Claude Code  skills are read from .claude/skills/"
-echo "  Codex        skills are read from .agents/skills/"
-echo "  Cursor       reads .cursor/skills/, .agents/skills/, and the two above"
+echo "  .agents/skills/  read by Codex and Cursor (the shared convention)"
+echo "  .claude/skills/  read by Claude Code, and by Cursor"
+echo "  .cursor/skills/  read by Cursor"
 echo "Requirements: macOS + Xcode Command Line Tools (swift on PATH)."
