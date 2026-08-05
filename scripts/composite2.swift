@@ -179,34 +179,53 @@ let cues: [Cue] = (env["CUES"] ?? "").split(separator: ";").compactMap {
     let p = $0.split(separator: " ").compactMap { Double($0) }
     return p.count >= 3 ? Cue(t: p[0], fx: p[1], fy: p[2], click: p.count > 3 ? p[3] != 0 : true) : nil
 }.sorted { $0.t < $1.t }
-let glideDur = Double(env["GLIDE"] ?? "") ?? 1.05
+let glideDur = Double(env["GLIDE"] ?? "") ?? 1.28
 // ARRIVE = how early the tip settles on the control before cue time T.
 // RIPPLE = how early the ring peaks relative to T. Defaults are tight so a
 // CDP/instant UI response doesn't change before the ring reads as the click.
-let arriveLead = Double(env["ARRIVE"] ?? "") ?? 0.18
+let arriveLead = Double(env["ARRIVE"] ?? "") ?? 0.20
 let rippleLead = Double(env["RIPPLE"] ?? "") ?? 0.0
 func makeCursorLayer() -> CALayer {
     if cursorStyle == "arrow" {
-        // Video-comp layers are y-down (origin top-left). Draw the tip at (0,0) and
-        // pin position there so the ripple hotspot and the visible tip are the same point.
+        // Rasterize a tip-up macOS arrow into a bitmap (y-down, tip at top-left),
+        // then place that bitmap on the video-comp layer. Path-in-layer drawing
+        // silently inverted in this compositor; a bitmap does not.
         let cs = CGFloat(Double(env["CURSOR_PX"] ?? "") ?? 64)
-        let shape = CAShapeLayer()
+        let pad = max(4, cs * 0.10)
         let u = cs / 20.0
+        let bw = Int(ceil(cs * 0.70 + pad * 2))
+        let bh = Int(ceil(cs + pad * 2))
+        let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: bw, pixelsHigh: bh,
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+        let nsCtx = NSGraphicsContext(bitmapImageRep: rep)!
+        nsCtx.cgContext.translateBy(x: 0, y: CGFloat(bh))
+        nsCtx.cgContext.scaleBy(x: 1, y: -1)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = nsCtx
         let pts: [(CGFloat, CGFloat)] = [(0,0), (0,16.5), (4.4,12.8), (7.1,18.9), (9.6,17.8), (7.0,11.9), (12.4,11.9)]
-        let path = CGMutablePath()
-        path.move(to: CGPoint(x: 0, y: 0))
-        for p in pts.dropFirst() { path.addLine(to: CGPoint(x: p.0 * u, y: p.1 * u)) }
-        path.closeSubpath()
-        shape.path = path
-        shape.fillColor = NSColor.black.cgColor
-        shape.strokeColor = NSColor.white.cgColor
-        shape.lineWidth = max(2, cs * 0.055)
-        shape.lineJoin = .round
-        shape.bounds = CGRect(x: -cs * 0.08, y: -cs * 0.08, width: cs * 0.78, height: cs * 1.08)
-        shape.anchorPoint = CGPoint(x: 0.08 / 0.78, y: 0.08 / 1.08) // (0,0) path tip
-        shape.shadowColor = NSColor.black.cgColor
-        shape.shadowOpacity = 0.35; shape.shadowRadius = 6; shape.shadowOffset = CGSize(width: 0, height: 2)
-        return shape
+        let path = NSBezierPath()
+        path.move(to: NSPoint(x: pad, y: pad))
+        for p in pts.dropFirst() { path.line(to: NSPoint(x: pad + p.0 * u, y: pad + p.1 * u)) }
+        path.close()
+        path.lineJoinStyle = .round
+        path.lineWidth = max(2, cs * 0.055)
+        NSColor.black.setFill(); NSColor.white.setStroke()
+        path.fill(); path.stroke()
+        NSGraphicsContext.restoreGraphicsState()
+        let cg = rep.cgImage!
+        let layer = CALayer()
+        layer.contents = cg
+        layer.contentsGravity = .resize
+        layer.bounds = CGRect(x: 0, y: 0, width: CGFloat(bw), height: CGFloat(bh))
+        let ax = pad / CGFloat(bw)
+        let ay = pad / CGFloat(bh)
+        layer.anchorPoint = CGPoint(x: ax, y: 1 - ay)
+        layer.shadowColor = NSColor.black.cgColor
+        layer.shadowOpacity = 0.28; layer.shadowRadius = 5
+        layer.shadowOffset = CGSize(width: 0, height: -2)
+        return layer
     } else {
         let dot = CALayer()
         let cr: CGFloat = CGFloat(Double(env["CURSOR_PX"] ?? "") ?? 52) / 2
@@ -286,14 +305,14 @@ if !cues.isEmpty && cursorStyle == "none" {
     glide.values = pVals.map { NSValue(point: $0) }
     glide.keyTimes = pTimes.map { NSNumber(value: min(1.0, $0/outDur)) }
     glide.timingFunctions = (1..<pVals.count).map {
-        pEase[$0] ? CAMediaTimingFunction(controlPoints: 0.4, 0, 0.15, 1) : CAMediaTimingFunction(name: .linear)
+        pEase[$0] ? CAMediaTimingFunction(controlPoints: 0.45, 0.05, 0.12, 1.0) : CAMediaTimingFunction(name: .linear)
     }
     glide.duration = outDur; glide.beginTime = AVCoreAnimationBeginTimeAtZero
     glide.isRemovedOnCompletion = false; glide.fillMode = .forwards
     cur.add(glide, forKey: "p")
     let op = CAKeyframeAnimation(keyPath: "opacity")
     op.values = [0, 0, 0.95, 0.95]
-    op.keyTimes = [0, NSNumber(value: fadeIn/outDur), NSNumber(value: min(1.0, (fadeIn+0.3)/outDur)), 1.0]
+    op.keyTimes = [0, NSNumber(value: fadeIn/outDur), NSNumber(value: min(1.0, (fadeIn+0.45)/outDur)), 1.0]
     op.duration = outDur; op.beginTime = AVCoreAnimationBeginTimeAtZero
     op.isRemovedOnCompletion = false; op.fillMode = .forwards
     cur.add(op, forKey: "o")
