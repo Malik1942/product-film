@@ -2,3 +2,7 @@
 *.mov
 *.mp4
 *.m4a
+# compiled helpers — build from .swift sources with swiftc -O
+scripts/sckrecord
+scripts/gatestats
+scripts/mousebin

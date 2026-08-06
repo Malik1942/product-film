@@ -2,8 +2,9 @@
 
 **An agent skill that turns screen recordings into scored, verified product films.** One `SKILL.md` plus plain Swift scripts, nothing agent-specific inside — it runs on any agent that reads the format (Codex, Cursor and Claude Code today).
 
-Point your agent at raw recordings of your product — an iOS app, a website, a desktop app, or a Figma prototype — and it gains the full production pipeline:
+Point your agent at your product — an iOS app, a website, a desktop app, or a Figma prototype — and it gains the full production pipeline, **self-contained in this one install**: from capturing the takes to delivering the final scored MP4, nothing else to download.
 
+- **Capture** — record the takes itself (ScreenCaptureKit recorder, staging checklists, pre-roll gate), or start from recordings you already have
 - **Measure** — find the real interaction times in the footage, so every cut lands where something actually happens
 - **Cut** — splice the beats, never mid-animation
 - **Composite** — camera moves and click cues; device mockup for mobile, Screen-Studio-style full-bleed for desktop
@@ -31,9 +32,11 @@ Every rule in this skill is a codified rejection from a real film delivery. The 
 
 ## Requirements
 
-- macOS with Xcode Command Line Tools (`swift` on PATH)
+- macOS with Xcode Command Line Tools (`swift` on PATH; `python3`, stock on macOS, for the camera-plan derivation)
 - Any agent that reads `SKILL.md` skills — e.g. [Codex](https://developers.openai.com/codex), [Cursor](https://cursor.com), [Claude Code](https://claude.com/claude-code)
 - For iOS Simulator capture: Xcode (`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`)
+
+That's everything — no companion downloads; capture tools ship in `scripts/` (compiled once on first use with `swiftc -O`, as the docs instruct the agent).
 
 ## Install
 
@@ -133,9 +136,10 @@ The page turn in scene 2 feels laggy and the zoom focuses on the wrong thing. Fi
 |---|---|
 | `SKILL.md` | Triggers, pipeline order, non-negotiables, symptom→fix table |
 | `references/playbook.md` | Stage contracts, script arguments, camera grammar, iron laws |
+| `references/capture-protocol.md` | Capture stage: staging checklists (sim / web / Figma proto), per-take protocol, HiDPI maths |
 | `references/writing-the-script.md` | The six-block film-script contract + fill-in template |
 | `references/gap-audit.md` | The mandatory per-render audit format |
-| `scripts/` | The pipeline: scan, diffscan/diffscan2, condense, composite2, stitch, score ×2, mux, title/end cards |
+| `scripts/` | The whole pipeline: capture (sckrecord, rollgate, autoplan, conform), measure (scan, diffscan ×2), cut (condense), composite2, stitch, score ×2, mux, title/end cards |
 | `assets/iphone-mockup.png` | Neutral device frame (generated, MIT-licensed) |
 
 Scripts come in two classes. **Utilities** run as-is with explicit arguments: `swift scripts/mux.swift film.mp4 score.m4a out.mp4`. **Templates** (stitch, score) are copied into your project and edited in-file — the clip order and chord tables *are* the interface. No script contains machine-specific or `/tmp` paths, and nothing depends on which agent is driving: every stage runs by hand from a shell.
@@ -148,15 +152,9 @@ The bundled frame is a clean generated bezel (safe to redistribute). For a photo
 FRAME_PNG=/path/to/bezel.png SCREEN_RECT=x,y,w,h swift scripts/composite2.swift ...
 ```
 
-## Companion skill
+## Capture-only sibling
 
-Capture (simulator staging, take protocol, auto-zoom derivation via `autoplan.py`) lives in the companion **[screen-recording](https://github.com/Malik1942/screen-recording)** skill — install both for the full recordings-to-scored-film pipeline:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Malik1942/screen-recording/main/install.sh | bash
-```
-
-This repo also stands alone for editing/compositing/scoring — record takes with whatever you have (`xcrun simctl io recordVideo`, `screencapture -v`), then measure with `diffscan` and cut from measured times.
+Everything needed for the full pipeline — **capture included** — ships in this repo; install it and you're ready, nothing else to download. The capture stage (staging checklists, per-take protocol, `sckrecord`, `autoplan.py`) is also published standalone as **[screen-recording](https://github.com/Malik1942/screen-recording)** for people who only want clean product captures without the film pipeline. If both are installed, they compose; neither requires the other.
 
 ## Contributing
 
